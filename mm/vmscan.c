@@ -916,7 +916,6 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 		 *    reclaim. Wait for the writeback to complete.
 		 */
 		if (PageWriteback(page)) {
-<<<<<<< HEAD
 			/* Case 1 above */
 			if (current_is_kswapd() &&
 			    PageReclaim(page) &&
@@ -927,22 +926,6 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 			/* Case 2 above */
 			} else if (global_reclaim(sc) ||
 			    !PageReclaim(page) || !(sc->gfp_mask & __GFP_IO)) {
-=======
-			/*
-			 * memcg doesn't have any dirty pages throttling so we
-			 * could easily OOM just because too many pages are in
-			 * writeback and there is nothing else to reclaim.
-			 *
-			 * Require may_enter_fs to wait on writeback, because
-			 * fs may not have submitted IO yet. And a loop driver
-			 * thread might enter reclaim, and deadlock if it waits
-			 * on a page for which it is needed to do the write
-			 * (loop masks off __GFP_IO|__GFP_FS for this reason);
-			 * but more thought would probably show more reasons.
-			 */
-			if (global_reclaim(sc) ||
-			    !PageReclaim(page) || !may_enter_fs) {
->>>>>>> v3.10.87
 				/*
 				 * This is slightly racy - end_page_writeback()
 				 * might have just cleared PageReclaim, then
@@ -2890,8 +2873,12 @@ static void age_active_anon(struct zone *zone, struct scan_control *sc)
 static bool zone_balanced(struct zone *zone, int order,
 			  unsigned long balance_gap, int classzone_idx)
 {
+	int alloc_flags = 0;
+
+	if (zone_idx(zone) == ZONE_MOVABLE)
+		alloc_flags |= ALLOC_CMA;
 	if (!zone_watermark_ok_safe(zone, order, high_wmark_pages(zone) +
-				    balance_gap, classzone_idx, 0))
+				    balance_gap, classzone_idx, alloc_flags))
 		return false;
 
 	if (IS_ENABLED(CONFIG_COMPACTION) && order &&
@@ -3170,6 +3157,7 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 
 		for (i = 0; i <= end_zone; i++) {
 			struct zone *zone = pgdat->node_zones + i;
+			int alloc_flags = 0;
 
 			if (!populated_zone(zone))
 				continue;
@@ -3181,10 +3169,12 @@ static unsigned long balance_pgdat(pg_data_t *pgdat, int order,
 			 * not call compaction as it is expected that the
 			 * necessary pages are already available.
 			 */
+			if (i == ZONE_MOVABLE)
+				alloc_flags |= ALLOC_CMA;
 			if (pgdat_needs_compaction &&
 					zone_watermark_ok(zone, order,
 						low_wmark_pages(zone),
-						*classzone_idx, 0))
+						*classzone_idx, alloc_flags))
 				pgdat_needs_compaction = false;
 		}
 
@@ -3457,6 +3447,7 @@ static int kswapd(void *p)
 void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 {
 	pg_data_t *pgdat;
+	int alloc_flags = 0;
 
 	if (!populated_zone(zone))
 		return;
@@ -3470,7 +3461,10 @@ void wakeup_kswapd(struct zone *zone, int order, enum zone_type classzone_idx)
 	}
 	if (!waitqueue_active(&pgdat->kswapd_wait))
 		return;
-	if (zone_watermark_ok_safe(zone, order, low_wmark_pages(zone), 0, 0))
+	if (zone_idx(zone) == ZONE_MOVABLE)
+		alloc_flags |= ALLOC_CMA;
+	if (zone_watermark_ok_safe(zone, order, low_wmark_pages(zone), 0,
+				alloc_flags))
 		return;
 
 	trace_mm_vmscan_wakeup_kswapd(pgdat->node_id, zone_idx(zone), order);
