@@ -46,7 +46,6 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
-#include <soc/qcom/socinfo.h>
 
 #include <asm/uaccess.h>
 
@@ -1843,15 +1842,6 @@ static int mmc_blk_err_check(struct mmc_card *card,
 				       req->rq_disk->disk_name, __func__,
 				       status);
 				gen_err = 1;
-			}
-
-			if ((of_board_is_sharp_eve()) && (mmc_card_mmc(card))) {
-				if (status & R1_CC_ERROR) {
-					pr_err("%s: %s: general error sending status command(for CC), card status %#x\n",
-					       req->rq_disk->disk_name, __func__,
-					       status);
-					gen_err = 1;
-				}
 			}
 
 			/* Timeout if the device never becomes ready for data
@@ -4402,4 +4392,3 @@ module_exit(mmc_blk_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Multimedia Card (MMC) block device driver");
-
