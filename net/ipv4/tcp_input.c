@@ -3296,17 +3296,13 @@ static void tcp_send_challenge_ack(struct sock *sk)
 		u32 half = (sysctl_tcp_challenge_ack_limit + 1) >> 1;
 
 		challenge_timestamp = now;
-		ACCESS_ONCE(challenge_count) = half +
-<<<<<<< HEAD
-				reciprocal_divide(prandom_u32(),
-=======
-				  reciprocal_divide(prandom_u32(),
->>>>>>> b1f32b9... tcp: make challenge acks less predictable
-					sysctl_tcp_challenge_ack_limit);
+		ACCESS_ONCE(challenge_count) =  half +
+			   reciprocal_divide(prandom_u32(),
+				sysctl_tcp_challenge_ack_limit);
 	}
 	count = ACCESS_ONCE(challenge_count);
 	if (count > 0) {
-		ACCESS_ONCE(challenge_count) = count - 1;
+		ACCESS_ONCE(challenge_count) =  count - 1;
 		NET_INC_STATS_BH(sock_net(sk), LINUX_MIB_TCPCHALLENGEACK);
 		tcp_send_ack(sk);
 	}
@@ -5341,6 +5337,7 @@ void tcp_finish_connect(struct sock *sk, struct sk_buff *skb)
 	struct inet_connection_sock *icsk = inet_csk(sk);
 
 	tcp_set_state(sk, TCP_ESTABLISHED);
+	icsk->icsk_ack.lrcvtime = tcp_time_stamp;
 
 	if (skb != NULL) {
 		icsk->icsk_af_ops->sk_rx_dst_set(sk, skb);
@@ -5541,7 +5538,6 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 			 * to stand against the temptation 8)     --ANK
 			 */
 			inet_csk_schedule_ack(sk);
-			icsk->icsk_ack.lrcvtime = tcp_time_stamp;
 			tcp_enter_quickack_mode(sk);
 			inet_csk_reset_xmit_timer(sk, ICSK_TIME_DACK,
 						  TCP_DELACK_MAX, TCP_RTO_MAX);
