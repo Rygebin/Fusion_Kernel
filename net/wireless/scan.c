@@ -353,7 +353,7 @@ void cfg80211_bss_age(struct cfg80211_registered_device *dev,
 void cfg80211_bss_expire(struct cfg80211_registered_device *dev)
 {
 	__cfg80211_bss_expire(dev, jiffies - IEEE80211_SCAN_RESULT_EXPIRE);
-
+}
 
 static bool cfg80211_bss_expire_oldest(struct cfg80211_registered_device *rdev)
 {
@@ -1227,6 +1227,8 @@ int cfg80211_wext_siwscan(struct net_device *dev,
 	for (i = 0; i < IEEE80211_NUM_BANDS; i++)
 		if (wiphy->bands[i])
 			creq->rates[i] = (1 << wiphy->bands[i]->n_bitrates) - 1;
+
+	eth_broadcast_addr(creq->bssid);
 
 	rdev->scan_req = creq;
 	err = rdev_scan(rdev, creq);
